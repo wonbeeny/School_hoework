@@ -1,4 +1,4 @@
-# School_hoework
+# School_Hoework
 대학원 과제 및 프로젝트 정리
 
 - Python, R ,SAS 프로그램 사용

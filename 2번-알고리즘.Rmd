@@ -1,0 +1,231 @@
+---
+title: "2번 알고리즘"
+output: html_document
+---
+
+# (b), (c), Uniform 함수 만들기
+```{r}
+library(ggplot2)
+
+lognormal_dist <- function(x, mu = 0.5, sig_sq = 0.1){
+  lognormal_new_x <- exp((-1) * (log(x) - mu)^2 / (2*sig_sq)) / (x * sqrt(2*pi*sig_sq))
+  return(lognormal_new_x)
+}
+
+weibull_dist <- function(x, alpha = 1, beta = 5){
+  weibull_new_x <- (beta/alpha) * (x/alpha)^(beta-1) * exp((-1) * (x/alpha)^beta)
+  return(weibull_new_x)
+}
+
+uniform_dist_01 <-  function(x) {
+  1
+}
+
+uniform_dist_04 <-  function(x) {
+  4
+}
+```
+
+
+# 2번 알고리즘
+
+### (b)
+
+
+```{r}
+sampling_first <- function(n) {
+  set.seed(1)
+  v <- runif(n, 0, 4)
+
+  M <- ( 4/sqrt(0.2*pi) ) * exp( ( (-1) * 0.4^2 + 0.8 * 0.4 - 0.25 ) / 0.2 )    # M 값을 구하는 방법은 다른 pdf 파일로 저장
+  
+  # step 1
+  u <- runif(n, 0, 1)
+  y <- c()
+  
+  for (i in 1:n) {
+    if ( u[i] < 1/M * lognormal_dist(v[i]) / uniform_dist_04(v[i]) ) {
+      y[i] <- v[i]
+    } else {
+      repeat {
+        u[i] <- runif(1, 0, 1)
+        if ( u[i] < 1/M * lognormal_dist(v[i]) / uniform_dist_04(v[i]) ) break
+      }
+      y[i] <- v[i]
+    }
+  }
+  return(y)
+}
+
+sampling_first(3)
+```
+
+- 원래는 이렇게 하면 되지만 '1/M * lognormal_dist(v[i]) / uniform_dist_04(v[i])' 의 값이 0과 너무 가까워져버리면 무한 루프가 되어 식을 바꿔줬음.
+
+```{r}
+sampling_first <- function(n) {
+  set.seed(11)
+  v <- runif(n, 0, 4)
+  
+  M <- ( 4/sqrt(0.2*pi) ) * exp( ( (-1) * 0.4^2 + 0.8 * 0.4 - 0.25 ) / 0.2 )
+  print(M)
+  for (i in 1:n) {
+    print(1/M * lognormal_dist(v[i]) / uniform_dist_04(v[i]))
+  }
+}
+
+sampling_first(8)
+```
+
+- ex) '1/M * lognormal_dist(v[i]) / uniform_dist_04(v[i])' = 6.574853e-96 인 경우
+
+```{r}
+sampling_first <- function(n) {
+  set.seed(3)
+  v <- runif(n, 0, 4)
+
+  M <- ( 4/sqrt(0.2*pi) ) * exp( ( (-1) * 0.4^2 + 0.8 * 0.4 - 0.25 ) / 0.2 )    # M 값을 구하는 방법은 다른 pdf 파일로 저장
+  
+  # step 1
+  u <- runif(n, 0, 1)
+  y <- c()
+  
+  for (i in 1:n) {
+    if ( u[i] < 1/M * lognormal_dist(v[i]) / uniform_dist_04(v[i]) ) {
+      y[i] <- v[i]
+    } else {
+      y[i] <- NA
+    }
+  }
+  x <-na.omit(y)
+  return(x)
+}
+```
+
+- 결측치가 많아 n을 5000, 20000, 52500 으로 해주겠음.
+- 결측치를 제외하면 95, 405, 1007 개가 생성됨.
+
+
+### (c)
+```{r}
+sampling_second <- function(n) {
+  set.seed(3)
+  v <- runif(n, 0, 4)
+  z <- seq(0.01, 4, by = 1e-02)
+
+  # weibull dist는 lognormal 처럼 특수한 경우가 아님으로 z의 범위를 (0,4] 까지 설정해준 후 함수에 넣어 최대값을 구하기로 함.
+  M <- max( weibull_dist(z) / uniform_dist_04(z) )
+  
+  # step 1
+  u <- runif(n, 0, 1)
+  y <- c()
+  
+  for (i in 1:n) {
+    if ( u[i] < 1/M * weibull_dist(v[i]) / uniform_dist_04(v[i]) ) {
+      y[i] <- v[i]
+    } else {
+      y[i] <- NA
+    }
+  }
+  x <-na.omit(y)
+  return(x)
+}
+```
+
+- 결측치가 많아 n을 600, 3000, 7500 으로 해주겠음.
+- 결측치를 제외하면 97, 396, 1014 개가 생성됨.
+
+
+## 확인
+- 실제 plots
+```{r}
+lognormal_dist_true <- data.frame(real_y = lognormal_dist(seq(0.001, 4, by = 1e-02)), real_x = seq(0.001, 4, by = 1e-02))
+weibull_dist_true <- data.frame(real_y = weibull_dist(seq(0.001, 4, by = 1e-02)), real_x = seq(0.001, 4, by = 1e-02))
+```
+
+### lognormal dist
+- 결측치가 많아 n을 5000, 20000, 52500 으로 해주겠음.
+- 결측치를 제외하면 95, 405, 1007 개가 생성됨.
+
+<br>
+
+- n = 95
+```{r}
+sir_sampling_95 <- data.frame(x = sampling_first(5000))
+hist_sample <- geom_histogram(aes(y = ..density..))
+
+ggplot(sir_sampling_95, aes(x)) + 
+  hist_sample + 
+  geom_line(aes(x = real_x, y = real_y), data = lognormal_dist_true, colour = "red2") + 
+  scale_fill_gradient2(guide = guide_legend(reverse = TRUE)) + 
+  ggtitle('N = 95')
+```
+
+
+- n = 405
+```{r}
+sir_sampling_405 <- data.frame(x = sampling_first(20000))
+
+ggplot(sir_sampling_405, aes(x)) + 
+  hist_sample + 
+  geom_line(aes(x = real_x, y = real_y), data = lognormal_dist_true, colour = "red2") + 
+  scale_fill_gradient2(guide = guide_legend(reverse = TRUE)) + 
+  ggtitle('N = 405')
+```
+
+
+- n = 1007
+```{r}
+sir_sampling_1007 <- data.frame(x = sampling_first(52500))
+
+ggplot(sir_sampling_1007, aes(x)) + 
+  hist_sample + 
+  geom_line(aes(x = real_x, y = real_y), data = lognormal_dist_true, colour = "red2") + 
+  scale_fill_gradient2(guide = guide_legend(reverse = TRUE)) + 
+  ggtitle('N = 1007')
+```
+
+
+
+
+### weibull dist
+- 결측치가 많아 n을 600, 3000, 7500 으로 해주겠음.
+- 결측치를 제외하면 97, 396, 1014 개가 생성됨.
+
+<br>
+
+- n = 97
+```{r}
+sir_sampling_97 <- data.frame(x = sampling_second(600))
+hist_sample <- geom_histogram(aes(y = ..density..))
+
+ggplot(sir_sampling_97, aes(x)) + 
+  hist_sample + 
+  geom_line(aes(x = real_x, y = real_y), data = weibull_dist_true, colour = "red2") + 
+  scale_fill_gradient2(guide = guide_legend(reverse = TRUE)) + 
+  ggtitle('N = 97')
+```
+
+
+- n = 396
+```{r}
+sir_sampling_396 <- data.frame(x = sampling_second(3000))
+
+ggplot(sir_sampling_396, aes(x)) + 
+  hist_sample + 
+  geom_line(aes(x = real_x, y = real_y), data = weibull_dist_true, colour = "red2") + 
+  scale_fill_gradient2(guide = guide_legend(reverse = TRUE)) + 
+  ggtitle('N = 396')
+```
+
+
+- n = 1014
+```{r}
+sir_sampling_1014 <- data.frame(x = sampling_second(7500))
+
+ggplot(sir_sampling_1014, aes(x)) + 
+  hist_sample + 
+  geom_line(aes(x = real_x, y = real_y), data = weibull_dist_true, colour = "red2") + 
+  scale_fill_gradient2(guide = guide_legend(reverse = TRUE)) + 
+  ggtitle('N = 1014')
+```

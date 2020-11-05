@@ -1,0 +1,187 @@
+---
+title: "HW : OLD in Newton-Raphson"
+author: "이원빈"
+date: "2019년 9월 24일"
+editor_options: 
+  chunk_output_type: console
+output:
+  html_document:
+    toc: true
+    toc_float: true
+    fig_width: 8
+    fig_height: 6 
+---
+
+
+<style type="text/css">
+
+body{ /* Normal  */
+      font-size: 22px;
+  }
+td {  /* Table  */
+  font-size: 40px;
+}
+h1.title {
+  font-size: 36px;
+  color: Black;
+}
+h1 { /* Header 1 */
+  font-size: 30px;
+  color: Black;
+}
+h2 { /* Header 2 */
+    font-size: 24px;
+  color:DarkRed;
+}
+h3 { /* Header 3 */
+  font-size: 22px;
+  font-family: "Times New Roman", Times, serif;
+  color: Blue;
+}
+code.r{ /* Code block */
+    font-size: 20px;
+}
+pre { /* Code block - determines code spacing between lines */
+    font-size: 20px;
+}
+</style>
+
+<br>
+
+<br>
+------------------------------------------------------------------------------
+
+
+
+```{r}
+hrs <- c( 0.25, 0.5, 0.75, 1, 1.25, 2, 3, 4, 5, 6, 8 )    # x variables
+plasma <- c( 2.05, 1.04, 0.81, 0.39, 0.3, 0.23, 0.13, 0.11, 0.08, 0.1, 0.06 )    # y variables
+```
+
+
+### (0.25, 2.05), (0.5, 1.04) 의 값을 넣어 beta의 초기치 설정
+
+```{r}
+b_2 <- log(2.05/1.04)/0.25    # beta2의 초기치
+b_1 <- 2.05/exp(-b_2*0.25)    # beta1의 초기치
+( vec_b_1 <- cbind(b_1, b_2) ) # beta 초기치의 vector 
+```
+
+<br>
+
+### f(x)의 값
+```{r}
+fx <- b_1*exp(-b_2*hrs)    
+```
+
+<br>
+
+### L_1차미분 값과 L_b1차 미분 값의 합 구하기  (vector)
+
+```{r}
+der1_func <- function(i){
+  result <- plasma - fx
+  fx_der1 <- c( exp(-b_2 * hrs[i]) , -b_1 * hrs[i] * exp(-b_2 * hrs[i]) )
+  L_der1_vec <- result[i] * fx_der1
+  return(L_der1_vec)
+}
+
+L_der1 <- lapply(1:11, FUN=der1_func)    # list로 표현된 각 i당 vector 값
+L_der1_sum <- Reduce('+', L_der1)    # 각 vector 값의 합
+
+L_der1
+L_der1_sum
+```
+
+<br>
+
+### L_2차 미분과 L_2차 미분의 합 구하기  (matrix)
+
+
+
+<br>
+##### 함수 생성
+```{r}
+der2_func <- function(i){
+  result <- plasma - fx
+  fx_der1 <- c( exp(-b_2 * hrs) , -b_1 * hrs * exp(-b_2 * hrs) )
+  fx_der1_matrix <- matrix( fx_der1 , nrow = 11 )
+  fx_der2 <- c( 0, -hrs[i] * exp(-b_2*hrs[i]) , -hrs[i] * exp(-b_2*hrs[i]) , b_1 * hrs[i]^2 * exp(-b_2 * hrs[i]))
+  fx_der2_matrix <- matrix( fx_der2 , nrow = 2)
+  L_der2 <- -fx_der1_matrix[i,] %*% t(fx_der1_matrix[i,]) + result[i] * fx_der2_matrix 
+  return(L_der2)
+}
+
+L_der2 <- lapply(1:11, FUN=der2_func)    # list로 표현된 각 i당 matrix 값
+L_der2_sum <- Reduce('+', L_der2)    # 각 matrix 값의 합
+
+L_der2
+L_der2_sum
+```
+
+
+
+
+<br>
+<br>
+<br>
+
+
+
+### convergence ###
+
+```{r}
+newton <- function(fun, tol = c(1e-8, 1e-8), B0 = c(0,0), N = 200){
+  i <- 1
+  p <- matrix( numeric(2*N) , ncol = 2) 
+  while(i <= N){
+    
+    ##### 여기부터
+    
+    fx <- B0[1]*exp(-B0[2]*hrs)
+    
+    der1_func <- function(i){
+      result <- plasma - fx
+      fx_der1 <- c( exp(-B0[2] * hrs[i]) , -B0[1] * hrs[i] * exp(-B0[2] * hrs[i]) )
+      L_der1_vec <- result[i] * fx_der1
+      return(L_der1_vec)
+    }
+    
+    L_der1 <- lapply(1:11, FUN=der1_func)
+    L_der1_sum <- Reduce('+', L_der1)
+    
+    der2_func <- function(i){
+      result <- plasma - fx
+      fx_der1 <- c( exp(-B0[2] * hrs) , -B0[1] * hrs * exp(-B0[2] * hrs) )
+      fx_der1_matrix <- matrix( fx_der1 , nrow = 11 )
+      fx_der2 <- c( 0, -hrs[i] * exp(-B0[2]*hrs[i]) , -hrs[i] * exp(-B0[2]*hrs[i]) , B0[1] * hrs[i]^2 * exp(-B0[2] * hrs[i]))
+      fx_der2_matrix <- matrix( fx_der2 , nrow = 2)
+      L_der2 <- -fx_der1_matrix[i,] %*% t(fx_der1_matrix[i,]) + result[i] * fx_der2_matrix 
+      return(L_der2)
+    }
+    
+    L_der2 <- lapply(1:11, FUN=der2_func) 
+    L_der2_sum <- Reduce('+', L_der2)
+    
+    #### 여기까지 위에 코드랑 99% 일치 : ( b_1 => B0[1] 으로, b_2 => B0[2] 로 바꿔줬음 )
+    
+    
+    L_der2_sum_inv <- solve(L_der2_sum)
+    B1 <- B0 - ( L_der1_sum %*% L_der2_sum_inv )
+    p[i,] <- B1
+    i = i+1
+    if( ( abs(B1[1] - B0[1]) < tol[1] ) & ( abs(B1[2] - B0[2]) < tol[2] ) ) break
+    B0 = B1
+  }
+  return(p[1:(i - 1),])
+}
+
+
+
+fun <- function(vec_b_1) {
+  vec_b_1 - ( L_der1_sum %*% solve(L_der2_sum) ) 
+}
+
+newton(fun,  B0 = vec_b_1)  # 6번 돌리면 수렴한다.
+
+```

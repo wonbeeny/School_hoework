@@ -1,0 +1,191 @@
+---
+title: "HW2 : OLD in Gauss-Newton"
+author: "이원빈"
+date: "2019년 10월 1일"
+editor_options: 
+  chunk_output_type: console
+output:
+  html_document:
+    toc: true
+    toc_float: true
+    fig_width: 8
+    fig_height: 6 
+---
+
+<style type="text/css">
+
+body{ /* Normal  */
+      font-size: 22px;
+  }
+td {  /* Table  */
+  font-size: 40px;
+}
+h1.title {
+  font-size: 36px;
+  color: Black;
+}
+h1 { /* Header 1 */
+  font-size: 30px;
+  color: Black;
+}
+h2 { /* Header 2 */
+    font-size: 24px;
+  color:DarkRed;
+}
+h3 { /* Header 3 */
+  font-size: 22px;
+  font-family: "Times New Roman", Times, serif;
+  color: Blue;
+}
+code.r{ /* Code block */
+    font-size: 20px;
+}
+pre { /* Code block - determines code spacing between lines */
+    font-size: 20px;
+}
+</style>
+
+<br>
+
+<br>
+------------------------------------------------------------------------------
+
+* HW2. OLS of Gauss-Newton
+
+# data 입력
+
+```{r}
+population <- c( 3929, 5308, 7239, 9638, 12866, 17069, 23191, 31443, 39818,
+                 50155, 62947, 75994, 91972, 105710, 122775, 131669, 151325,
+                 179323, 203211, 226542, 248710, 281422 )
+population <- population / 1000
+t <- 1:length(population)
+```
+
+# b_1 , b_2 , b_3 의 초기값
+
+* SAS 결과값을 활용하였음
+
+```{r}
+b_1 <- 440
+b_2 <- 4
+b_3 <- -0.2
+BETA <- c( b_1 , b_2 , b_3 )
+BETA
+```
+
+
+# sum of matrix
+
+* 각 시점당 ft_beta와 ft_beta transpose를 곱한 값과 22 시점의 matrix의 합 구하기 (matrix)
+
+```{r}
+ft_beta_square <- function(i){
+  ft_der1 <- c( 1/(1 + exp(b_2 + b_3 * t[i])) , 
+                -(b_1 * exp(b_2 + b_3 * t[i])/(1 + exp(b_2 + b_3 * t[i]))^2) , 
+                -(b_1 * (exp(b_2 + b_3 * t[i]) * t[i])/(1 + exp(b_2 + b_3 * t[i]))^2) )
+  ft_beta_square <- ft_der1 %*% t(ft_der1)
+  return(ft_beta_square)
+}
+
+ft_beta_square_list <- lapply(1:22, FUN=ft_beta_square)
+ft_beta_square_sum <- Reduce('+', ft_beta_square_list)    
+
+ft_beta_square_list
+ft_beta_square_sum
+```
+
+
+
+# sum of vector
+
+* 각 시점당 잔차와 ft_beta를 곱한 값과 22 시점의 vector의 합 구하기 (vector)
+
+```{r}
+res_cross_ft_beta <- function(i){
+  f_t <- b_1 / ( 1 + exp( b_2 + b_3 * t[i] ) )
+  ft_der1 <- c( 1/(1 + exp(b_2 + b_3 * t[i])) , 
+                -(b_1 * exp(b_2 + b_3 * t[i])/(1 + exp(b_2 + b_3 * t[i]))^2) , 
+                -(b_1 * (exp(b_2 + b_3 * t[i]) * t[i])/(1 + exp(b_2 + b_3 * t[i]))^2) )
+  each_t <- ( population[i] - f_t ) * ft_der1
+  return(each_t)
+}
+
+res_cross_ft_beta_list <- lapply(1:22, FUN=res_cross_ft_beta)
+res_cross_ft_beta_sum <- Reduce('+', res_cross_ft_beta_list)
+
+res_cross_ft_beta_list
+res_cross_ft_beta_sum
+```
+
+
+# convergence
+
+```{r}
+OLS_Gauss_Newton <- function(fun, tol = c(1e-8, 1e-8, 1e-8), B0 = c(0,0,0), N = 200){
+  i <- 1
+  p <- matrix( numeric(3*N) , ncol = 3) 
+  while(i <= N){
+    
+    ##### 여기부터
+    
+    
+    
+    
+    
+    ###### 각 시점당 ft_beta와 ft_beta transpose를 곱한 값과 22 시점의 matrix의 합 구하기  (matrix) 
+    
+    ft_beta_square <- function(i){
+      ft_der1 <- c( 1/(1 + exp(B0[2] + B0[3] * t[i])) , 
+                    -(B0[1] * exp(B0[2] + B0[3] * t[i])/(1 + exp(B0[2] + B0[3] * t[i]))^2) , 
+                    -(B0[1] * (exp(B0[2] + B0[3] * t[i]) * t[i])/(1 + exp(B0[2] + B0[3] * t[i]))^2) )
+      ft_beta_square <- ft_der1 %*% t(ft_der1)
+      return(ft_beta_square)
+    }
+    
+    ft_beta_square_list <- lapply(1:22, FUN=ft_beta_square)
+    ft_beta_square_sum <- Reduce('+', ft_beta_square_list)    
+    
+    
+    ###### 각 시점당 잔차와 ft_beta를 곱한 값과 22 시점의 vector의 합 구하기 (vector)
+    
+    res_cross_ft_beta <- function(i){
+      f_t <- B0[1] / ( 1 + exp( B0[2] + B0[3] * t[i] ) )
+      ft_der1 <- c( 1/(1 + exp(B0[2] + B0[3] * t[i])) , 
+                    -(B0[1] * exp(B0[2] + B0[3] * t[i])/(1 + exp(B0[2] + B0[3] * t[i]))^2) , 
+                    -(B0[1] * (exp(B0[2] + B0[3] * t[i]) * t[i])/(1 + exp(B0[2] + B0[3] * t[i]))^2) )
+      each_t <- ( population[i] - f_t ) * ft_der1
+      return(each_t)
+    }
+    
+    res_cross_ft_beta_list <- lapply(1:22, FUN=res_cross_ft_beta)
+    res_cross_ft_beta_sum <- Reduce('+', res_cross_ft_beta_list)
+    
+    
+    
+    
+    
+    #### 여기까지 위에 코드랑 99% 일치 : ( b_1 => B0[1] 으로, b_2 => B0[2] , b_3 => B0[3] 로 바꿔줬음 )
+    
+    
+    B1 <- B0 + solve(ft_beta_square_sum) %*% res_cross_ft_beta_sum
+    p[i,] <- B1
+    i = i+1
+    if( ( abs(B1[1] - B0[1]) < tol[1] ) & ( abs(B1[2] - B0[2]) < tol[2] ) & ( abs(B1[3] - B0[3]) < tol[3] ) ) break
+    B0 = B1
+  }
+  return(p[1:(i - 1),])
+}
+
+
+
+fun <- function(BETA) {
+  BETA + solve(ft_beta_square_sum) %*% res_cross_ft_beta_sum 
+}
+
+OLS_Gauss_Newton(fun,  B0 = BETA)   # 11번 돌리면 수렴한다.
+```
+
+* 11번 돌리면 수렴한다.
+* SAS 에서 beta1 = 444.3 , beta2 = 4.2480 , beta3 = -0.2152 가 나왔었음.
+* R 과 SAS에서의 결과가 일치!

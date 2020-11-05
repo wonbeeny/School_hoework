@@ -1,0 +1,168 @@
+---
+title: "3번 알고리즘"
+output: html_document
+---
+
+# (b), (c), Uniform 함수 만들기
+```{r}
+library(ggplot2)
+
+lognormal_dist <- function(x, mu = 0.5, sig_sq = 0.1){
+  lognormal_new_x <- exp((-1) * (log(x) - mu)^2 / (2*sig_sq)) / (x * sqrt(2*pi*sig_sq))
+  return(lognormal_new_x)
+}
+
+weibull_dist <- function(x, alpha = 1, beta = 5){
+  weibull_new_x <- (beta/alpha) * (x/alpha)^(beta-1) * exp((-1) * (x/alpha)^beta)
+  return(weibull_new_x)
+}
+
+uniform_dist_01 <-  function(x) {
+  1
+}
+
+uniform_dist_04 <-  function(x) {
+  4
+}
+```
+
+
+# 3번 알고리즘
+
+### (b)
+```{r}
+sampling_first <- function(n) {
+  for (i in 1:n) {
+    set.seed(1)
+    v <- runif(n, 0, 4)
+    u <- runif(n, 0, 1)
+    
+    # step 1
+    if (i == 1){
+      Z <- v[i]
+      rho_MA <- c(0)
+    } else {      # step 2
+      rho_MA[i] <- min( ( (lognormal_dist(v[i]) / uniform_dist_04(v[i])) * (uniform_dist_04(Z[i-1]) / lognormal_dist(Z[i-1])) ) , 1 )
+      if ( u[i] <= rho_MA[i] ) {
+        Z[i] <- v[i]
+      } else {
+        Z[i] <- Z[i-1]
+      }
+    }
+  }
+  return(Z)
+}
+```
+
+
+
+### (c)
+```{r}
+sampling_second <- function(n) {
+  for (i in 1:n) {
+    set.seed(1)
+    v <- runif(n, 0, 4)
+    u <- runif(n, 0, 1)
+    
+    # step 1
+    if (i == 1){
+      Z <- v[i]
+      rho_MA <- c(0)
+    } else {      # step 2
+      rho_MA[i] <- min( ( (weibull_dist(v[i]) / uniform_dist_04(v[i])) * (uniform_dist_04(Z[i-1]) / weibull_dist(Z[i-1])) ) , 1 )
+      if ( u[i] <= rho_MA[i] ) {
+        Z[i] <- v[i]
+      } else {
+        Z[i] <- Z[i-1]
+      }
+    }
+  }
+  return(Z)
+}
+```
+
+
+
+## 확인
+- 실제 plots
+```{r}
+lognormal_dist_true <- data.frame(real_y = lognormal_dist(seq(0.001, 4, by = 1e-02)), real_x = seq(0.001, 4, by = 1e-02))
+weibull_dist_true <- data.frame(real_y = weibull_dist(seq(0.001, 4, by = 1e-02)), real_x = seq(0.001, 4, by = 1e-02))
+```
+
+### lognormal dist
+- n = 100
+```{r}
+sir_sampling_100 <- data.frame(x = sampling_first(100))
+hist_sample <- geom_histogram(aes(y = ..density..))
+
+ggplot(sir_sampling_100, aes(x)) + 
+  hist_sample + 
+  geom_line(aes(x = real_x, y = real_y), data = lognormal_dist_true, colour = "red2") + 
+  scale_fill_gradient2(guide = guide_legend(reverse = TRUE)) + 
+  ggtitle('N = 100')
+```
+
+
+- n = 400
+```{r}
+sir_sampling_400 <- data.frame(x = sampling_first(400))
+
+ggplot(sir_sampling_400, aes(x)) + 
+  hist_sample + 
+  geom_line(aes(x = real_x, y = real_y), data = lognormal_dist_true, colour = "red2") + 
+  scale_fill_gradient2(guide = guide_legend(reverse = TRUE)) + 
+  ggtitle('N = 400')
+```
+
+
+- n = 1000
+```{r}
+sir_sampling_1000 <- data.frame(x = sampling_first(1000))
+
+ggplot(sir_sampling_1000, aes(x)) + 
+  hist_sample + 
+  geom_line(aes(x = real_x, y = real_y), data = lognormal_dist_true, colour = "red2") + 
+  scale_fill_gradient2(guide = guide_legend(reverse = TRUE)) + 
+  ggtitle('N = 1000')
+```
+
+
+
+
+### weibull dist
+- n = 100
+```{r}
+sir_sampling_100 <- data.frame(x = sampling_second(100))
+hist_sample <- geom_histogram(aes(y = ..density..))
+
+ggplot(sir_sampling_100, aes(x)) + 
+  hist_sample + 
+  geom_line(aes(x = real_x, y = real_y), data = weibull_dist_true, colour = "red2") + 
+  scale_fill_gradient2(guide = guide_legend(reverse = TRUE)) + 
+  ggtitle('N = 100')
+```
+
+
+- n = 400
+```{r}
+sir_sampling_400 <- data.frame(x = sampling_second(400))
+
+ggplot(sir_sampling_400, aes(x)) + 
+  hist_sample + 
+  geom_line(aes(x = real_x, y = real_y), data = weibull_dist_true, colour = "red2") + 
+  scale_fill_gradient2(guide = guide_legend(reverse = TRUE)) + 
+  ggtitle('N = 400')
+```
+
+
+- n = 1000
+```{r}
+sir_sampling_1000 <- data.frame(x = sampling_second(1000))
+
+ggplot(sir_sampling_1000, aes(x)) + 
+  hist_sample + 
+  geom_line(aes(x = real_x, y = real_y), data = weibull_dist_true, colour = "red2") + 
+  scale_fill_gradient2(guide = guide_legend(reverse = TRUE)) + 
+  ggtitle('N = 1000')
+```
